@@ -1,5 +1,43 @@
 # mlsp-bss
 Investigation of Blind Source Separation Techniques for MLSP
 
+## Setup
 
-Requires [MedleyDB Audio dataset](https://medleydb.weebly.com/) for testing and evaluation
+### Requirements
+- Python 3.11+
+- Dependencies listed in `requirements.txt`
+
+### Installation
+```bash
+pip install -r requirements.txt
+```
+
+### Data
+Uses stems of 'Nude' by Radiohead released by the band for a remix competition.
+
+The recommended file structure is as follows:
+```
+mlsp-bss/
+├── audio/
+│   ├── stems/           # Individual tracks (vocal, drum, bass, guitar, synth)
+│   ├── originals/       # Mixed audio (original + mix, instrumental created by script)
+│   └── outputs/         # BSS separation outputs
+├── scripts/
+│   ├── create_groundtruth_audio.py
+│   └── ica_separation.py
+├── requirements.txt
+└── README.md
+```
+## Usage
+Generate ground truth mixes
+```bash
+python scripts/create_groundtruth_audio.py
+```
+
+ICA separation
+```bash
+python scripts/create_groundtruth_audio.py
+```
+
+## Methods
+Baseline methods include Independent Component Analysis and Non-negative Matrix Factorization with more to come.
