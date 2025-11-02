@@ -3,3 +3,4 @@ numpy==2.1.0
 soundfile==0.13.1
 librosa==0.11.0
 matplotlib==3.10.0
+mir_eval==0.8.2
