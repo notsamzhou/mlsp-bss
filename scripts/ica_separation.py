@@ -89,8 +89,8 @@ def main(args):
     source2 = normalize(H[1])
 
     # Save to target dir
-    output_file1 = output_dir / f"{args.output_prefix}1.wav"
-    output_file2 = output_dir / f"{args.output_prefix}2.wav"
+    output_file1 = output_dir / f"{args.output_prefix}_source1.wav"
+    output_file2 = output_dir / f"{args.output_prefix}_source2.wav"
     sf.write(output_file1, source1, sr)
     sf.write(output_file2, source2, sr)
 
@@ -123,12 +123,19 @@ def main(args):
 
         # Choose the ordering with better average SDR
         if np.mean(sdr1) > np.mean(sdr2):
+            vocal_est, instr_est = source1, source2
             sdr, sir, sar = sdr1, sir1, sar1
             print("\nBest match: source1=vocals, source2=instrumental")
         else:
+            vocal_est, instr_est = source2, source1
             sdr, sir, sar = sdr2, sir2, sar2
             print("\nBest match: source2=vocals, source1=instrumental")
 
+        output_file1 = output_dir / f"{args.output_prefix}_vocals.wav"
+        output_file2 = output_dir / f"{args.output_prefix}_instrumental.wav"
+        sf.write(output_file1, vocal_est, sr)
+        sf.write(output_file2, instr_est, sr)
+        
         print("\nBSS Metrics:")
         print(f"    Vocals:")
         print(f"        SDR: {sdr[0]:.2f} dB")
@@ -139,6 +146,8 @@ def main(args):
         print(f"        SIR: {sir[1]:.2f} dB")
         print(f"        SAR: {sar[1]:.2f} dB")
         print(f"\nAverage SDR: {np.mean(sdr):.2f} dB")
+        print(f"\nAverage SIR: {np.mean(sir):.2f} dB")
+        print(f"\nAverage SAR: {np.mean(sar):.2f} dB")
         
     except Exception as e:
         print(f"\nError: evaluation failed: {e}")
@@ -150,8 +159,8 @@ if __name__ == "__main__":
                         default='audio/originals/Nude_mix.wav', 
                         help='Input audio file path (default: audio/originals/Nude_mix.wav)')
     parser.add_argument('-o', '--output-prefix', 
-                        default='Nude_ica_source',
-                        help='Output file prefix (default: Nude_ica_source)')
+                        default='Nude_ica',
+                        help='Output file prefix (default: Nude_ica)')
     parser.add_argument('-v', '--vocal_ref', 
                         default='audio/stems/Nude_vocal.wav',
                         help='Vocal reference for evaluation (default: audio/stems/Nude_vocal.wav)')
