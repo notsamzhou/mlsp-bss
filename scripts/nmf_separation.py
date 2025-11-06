@@ -8,7 +8,7 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 import mir_eval
 from tqdm import tqdm
 
-def nmf_separation(M, B_vocal_init=None, B_inst_init=None, W_vocal_init=None, W_inst_init=None, n_base=100, n_iter=500, eps=1e-10, alpha=0.1):
+def nmf_separation(M, B_vocal_init=None, B_inst_init=None, W_vocal_init=None, W_inst_init=None, n_base=100, n_iter=500, eps=1e-10, random_seed=2025):
     """
     Perform blind source separation using Non-negative Matrix Factorization (NMF).
 
@@ -21,7 +21,6 @@ def nmf_separation(M, B_vocal_init=None, B_inst_init=None, W_vocal_init=None, W_
         n_base: Number of basis components per source (default: 100)
         n_iter: Number of NMF update iterations (default: 500)
         eps: Small constant to avoid division by zero (default: 1e-10)
-        alpha: L1 penalty parameter to make W sparse (default: 0.1)
 
     Returns:
         M_speech_rec: Reconstructed vocal spectrogram (array of shape (freq_bins, time_frames))
@@ -30,6 +29,7 @@ def nmf_separation(M, B_vocal_init=None, B_inst_init=None, W_vocal_init=None, W_
     assert np.all(M >= 0), "Matrix M has negative entries"
     
     p, q = M.shape
+    np.random.seed(random_seed)
     if B_vocal_init is None:
         B_vocal_init = np.random.rand(p, n_base)
     if B_inst_init is None:
@@ -48,7 +48,7 @@ def nmf_separation(M, B_vocal_init=None, B_inst_init=None, W_vocal_init=None, W_
     for iter_i in tqdm(range(n_iter)):
         WH = B @ W + eps
         B *= (((M / WH) @ W.T) / ((np.ones_like(M) @ W.T) + eps))
-        W *= ((B.T @ (M / WH)) / ((B.T @ np.ones_like(M)) + alpha))
+        W *= ((B.T @ (M / WH)) / ((B.T @ np.ones_like(M)) + eps))
         
     split_point = W.shape[0] // 2
     W_vocal, W_inst = np.split(W, [split_point], axis=0)
@@ -82,6 +82,22 @@ def evaluate_separation(references, estimates):
     sdr, sir, sar, _ = mir_eval.separation.bss_eval_sources(references, estimates)
     return sdr, sir, sar
 
+def evaluate_si_sdr(refs, ests):
+    """
+    Evaluate SI-SDR for each source pair (refs[i], ests[i]).
+    """
+    def si_sdr(reference, estimate):
+        ref_energy = np.sum(reference ** 2)
+        if ref_energy == 0:
+            return -np.inf
+        scale = np.dot(reference, estimate) / ref_energy
+        est_target = scale * reference
+        e_noise = estimate - est_target
+        return 10 * np.log10(np.sum(est_target ** 2) / np.sum(e_noise ** 2))
+    sdrs = []
+    for r, e in zip(refs, ests):
+        sdrs.append(si_sdr(r, e))
+    return np.array(sdrs)
 
 def main(args):
 
@@ -158,9 +174,10 @@ def main(args):
         sdr1, sir1, sar1 = evaluate_separation(references, estimates_order1)
         sdr2, sir2, sar2 = evaluate_separation(references, estimates_order2)
 
-
         # Choose the ordering with better average SDR
-        if np.mean(sdr1) > np.mean(sdr2):
+        sisdr1 = evaluate_si_sdr(references, estimates_order1)
+        sisdr2 = evaluate_si_sdr(references, estimates_order2)
+        if np.mean(sisdr1) > np.mean(sisdr2):
             sdr, sir, sar = sdr1, sir1, sar1
             print("\nBest match: source1=vocals, source2=instrumental")
         else:
@@ -206,8 +223,6 @@ if __name__ == "__main__":
                         help='Hop length between frames (default: 512)')
     parser.add_argument('--win-length', type=int, default=2048,
                         help='Window length for STFT (default: 2048)')
-    parser.add_argument('--alpha', type=float, default=0.1,
-                        help='L1 penalty parameter to make W sparse (default: 0.1)')
     args = parser.parse_args()
 
     main(args)
