@@ -159,7 +159,7 @@ if __name__ == "__main__":
                         default='audio/originals/Nude_mix.wav', 
                         help='Input audio file path (default: audio/originals/Nude_mix.wav)')
     parser.add_argument('-o', '--output-prefix', 
-                        default='Nude_ica_source',
+                        default='Nude_ica',
                         help='Output file prefix (default: Nude_ica)')
     parser.add_argument('-v', '--vocal_ref', 
                         default='audio/stems/Nude_vocal.wav',
