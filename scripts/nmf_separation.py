@@ -77,14 +77,7 @@ def evaluate_separation(references, estimates):
         estimates: array of shape (n_sources, n_samples)
 
     Returns:
-        sdr, sir, sar, perm: SDR, SIR, and SAR values
-    """
-    sdr, sir, sar, _ = mir_eval.separation.bss_eval_sources(references, estimates)
-    return sdr, sir, sar
-
-def evaluate_si_sdr(refs, ests):
-    """
-    Evaluate SI-SDR for each source pair (refs[i], ests[i]).
+        sdr, sir, sar, sisdr: SDR, SIR, SAR, and SI-SDR values
     """
     def si_sdr(reference, estimate):
         ref_energy = np.sum(reference ** 2)
@@ -94,10 +87,11 @@ def evaluate_si_sdr(refs, ests):
         est_target = scale * reference
         e_noise = estimate - est_target
         return 10 * np.log10(np.sum(est_target ** 2) / np.sum(e_noise ** 2))
-    sdrs = []
-    for r, e in zip(refs, ests):
-        sdrs.append(si_sdr(r, e))
-    return np.array(sdrs)
+    sdr, sir, sar, _ = mir_eval.separation.bss_eval_sources(references, estimates)
+    sisdr = []
+    for r, e in zip(references, estimates):
+        sisdr.append(si_sdr(r, e))
+    return sdr, sir, sar, np.array(sisdr)
 
 def main(args):
 
@@ -120,7 +114,7 @@ def main(args):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Load audio
-    audio, sr = librosa.load(input_file, sr=None, mono=True)  # mono for NMF
+    audio, sr = librosa.load(input_file, sr=None, mono=True)  # mono 
 
     # Spectrogram
     spec = librosa.stft(audio, n_fft=n_fft, hop_length=hop_length, center=False, win_length=win_length)
@@ -171,25 +165,25 @@ def main(args):
         references = np.array([vocal_ref, instr_ref])
         estimates_order1 = np.array([source1, source2])
         estimates_order2 = np.array([source2, source1])
-        sdr1, sir1, sar1 = evaluate_separation(references, estimates_order1)
-        sdr2, sir2, sar2 = evaluate_separation(references, estimates_order2)
+        sdr1, sir1, sar1, sisdr1 = evaluate_separation(references, estimates_order1)
+        sdr2, sir2, sar2, sisdr2 = evaluate_separation(references, estimates_order2)
 
         # Choose the ordering with better average SDR
-        sisdr1 = evaluate_si_sdr(references, estimates_order1)
-        sisdr2 = evaluate_si_sdr(references, estimates_order2)
         if np.mean(sisdr1) > np.mean(sisdr2):
-            sdr, sir, sar = sdr1, sir1, sar1
+            sdr, sir, sar, sisdr = sdr1, sir1, sar1, sisdr1
             print("\nBest match: source1=vocals, source2=instrumental")
         else:
-            sdr, sir, sar = sdr2, sir2, sar2
+            sdr, sir, sar, sisdr = sdr2, sir2, sar2, sisdr2
             print("\nBest match: source2=vocals, source1=instrumental")
 
         print("\nBSS Metrics:")
         print(f"    Vocals:")
+        print(f"        SI-SDR: {sisdr[0]:.2f} dB")
         print(f"        SDR: {sdr[0]:.2f} dB")
         print(f"        SIR: {sir[0]:.2f} dB")
         print(f"        SAR: {sar[0]:.2f} dB")
         print(f"    Instrumental:")
+        print(f"        SI-SDR: {sisdr[1]:.2f} dB")
         print(f"        SDR: {sdr[1]:.2f} dB")
         print(f"        SIR: {sir[1]:.2f} dB")
         print(f"        SAR: {sar[1]:.2f} dB")
