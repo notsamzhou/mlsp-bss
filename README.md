@@ -27,6 +27,7 @@ mlsp-bss/
 │   └── ica_separation.py
 │   └── nmf_separation.py
 │   └── tune_nmf_params.py
+│   └── ilrma_separation.py
 ├── requirements.txt
 └── README.md
 ```
@@ -44,6 +45,11 @@ python scripts/ica_separation.py
 NMF separation
 ```bash
 python scripts/nmf_separation.py
+```
+
+ILRMA separation
+```bash
+python scripts/ilrma_separation.py
 ```
 
 ## Methods
