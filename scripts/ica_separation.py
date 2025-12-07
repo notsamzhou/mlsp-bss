@@ -80,8 +80,8 @@ def evaluate_separation(references, estimates):
     Returns:
         sdr, sir, sar, perm: SDR, SIR, and SAR values
     """
-    sdr, sir, sar, _ = mir_eval.separation.bss_eval_sources(references, estimates)
-    return sdr, sir, sar
+    sdr, sir, sar, perm = mir_eval.separation.bss_eval_sources(references, estimates)
+    return sdr, sir, sar, perm
 
 def flatten_stereo(stereo_audio):
     """
@@ -115,7 +115,7 @@ def main(args):
 
     print("\nPerforming ICA Separation")
 
-    # Apply ICA and normalize
+    # Apply ICA, project to stereo, and normalize
     H = ica(audio)
     H = projection_back(H, audio)
     source1 = normalize(H[0])
@@ -150,24 +150,15 @@ def main(args):
         source1_flat = flatten_stereo(source1)
         source2_flat = flatten_stereo(source2)
 
-        # Try both orderings to find which aligns better with vocal/instr
         references = np.array([vocal_ref_flat, instr_ref_flat])
-        estimates_order1 = np.array([source1_flat, source2_flat])
-        estimates_order2 = np.array([source2_flat, source1_flat])
-        sdr1, sir1, sar1 = evaluate_separation(references, estimates_order1)
-        sdr2, sir2, sar2 = evaluate_separation(references, estimates_order2)
+        estimates = np.array([source1_flat, source2_flat])
+        sdr, sir, sar, perm = evaluate_separation(references, estimates)
 
+        sources = [source1, source2]
+        vocal_est = sources[perm[0]]
+        instr_est = sources[perm[1]]
 
-
-        # Choose the ordering with better average SDR
-        if np.mean(sdr1) > np.mean(sdr2):
-            vocal_est, instr_est = source1, source2
-            sdr, sir, sar = sdr1, sir1, sar1
-            print("\nBest match: source1=vocals, source2=instrumental")
-        else:
-            vocal_est, instr_est = source2, source1
-            sdr, sir, sar = sdr2, sir2, sar2
-            print("\nBest match: source2=vocals, source1=instrumental")
+        print(f"\nBest match: source{perm[0]+1}=vocals, source{perm[1]+1}=instrumental")
 
         output_file1 = output_dir / f"{args.output_prefix}_vocals.wav"
         output_file2 = output_dir / f"{args.output_prefix}_instrumental.wav"

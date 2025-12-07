@@ -96,6 +96,7 @@ def auxiva(X, n_iters=30):
             # Calculate w_new^H @ V @ w_new
             Vw = np.einsum('fcd, fd -> fc', V, w_new.conj())
             val = np.einsum('fc, fc -> f', w_new, Vw).real
+            val = np.maximum(val, 1e-15)
             scale = np.sqrt(val) + 1e-10
             w_new = w_new / scale[:, None]
             
@@ -132,8 +133,8 @@ def evaluate_separation(references, estimates):
     Returns:
         sdr, sir, sar, perm: SDR, SIR, and SAR values
     """
-    sdr, sir, sar, _ = mir_eval.separation.bss_eval_sources(references, estimates)
-    return sdr, sir, sar
+    sdr, sir, sar, perm = mir_eval.separation.bss_eval_sources(references, estimates)
+    return sdr, sir, sar, perm
 
 def flatten_stereo(stereo_audio):
     """
@@ -174,7 +175,7 @@ def main(args):
 
     print("\nPerforming AuxIVA Separation")
 
-    # Apply ICA and normalize
+    # Apply IVA, project back to stereo, and normalize
     Y_stft = auxiva(X, n_iters=n_iter)
     Y_stft = projection_back(Y_stft, X)
 
@@ -218,24 +219,15 @@ def main(args):
         source1_flat = flatten_stereo(source1)
         source2_flat = flatten_stereo(source2)
 
-        # Try both orderings to find which aligns better with vocal/instr
         references = np.array([vocal_ref_flat, instr_ref_flat])
-        estimates_order1 = np.array([source1_flat, source2_flat])
-        estimates_order2 = np.array([source2_flat, source1_flat])
-        sdr1, sir1, sar1 = evaluate_separation(references, estimates_order1)
-        sdr2, sir2, sar2 = evaluate_separation(references, estimates_order2)
+        estimates = np.array([source1_flat, source2_flat])
+        sdr, sir, sar, perm = evaluate_separation(references, estimates)
 
+        sources = [source1, source2]
+        vocal_est = sources[perm[0]]
+        instr_est = sources[perm[1]]
 
-
-        # Choose the ordering with better average SDR
-        if np.mean(sdr1) > np.mean(sdr2):
-            vocal_est, instr_est = source1, source2
-            sdr, sir, sar = sdr1, sir1, sar1
-            print("\nBest match: source1=vocals, source2=instrumental")
-        else:
-            vocal_est, instr_est = source2, source1
-            sdr, sir, sar = sdr2, sir2, sar2
-            print("\nBest match: source2=vocals, source1=instrumental")
+        print(f"\nBest match: source{perm[0]+1}=vocals, source{perm[1]+1}=instrumental")
 
         output_file1 = output_dir / f"{args.output_prefix}_vocals.wav"
         output_file2 = output_dir / f"{args.output_prefix}_instrumental.wav"
@@ -275,7 +267,7 @@ if __name__ == "__main__":
                         help='Instrumental reference for evaluation (default: audio/originals/Nude_instrumental.wav)')
     
     parser.add_argument('--n-iter', type=int, default=100,
-                        help='Number of NMF iterations (default: 100)')
+                        help='Number of GD iterations (default: 100)')
     parser.add_argument('--n-fft', type=int, default=2048,
                         help='FFT window size (default: 2048)')
     parser.add_argument('--hop-length', type=int, default=512,
