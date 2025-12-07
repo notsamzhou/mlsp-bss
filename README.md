@@ -25,6 +25,9 @@ mlsp-bss/
 ├── scripts/
 │   ├── create_groundtruth_audio.py
 │   └── ica_separation.py
+│   └── nmf_separation.py
+│   └── tune_nmf_params.py
+│   └── ilrma_separation.py
 ├── requirements.txt
 └── README.md
 ```
@@ -36,7 +39,17 @@ python scripts/create_groundtruth_audio.py
 
 ICA separation
 ```bash
-python scripts/create_groundtruth_audio.py
+python scripts/ica_separation.py
+```
+
+NMF separation
+```bash
+python scripts/nmf_separation.py
+```
+
+ILRMA separation
+```bash
+python scripts/ilrma_separation.py
 ```
 
 ## Methods
