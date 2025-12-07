@@ -25,18 +25,16 @@ def projection_back(Y, X):
     Y_images = np.zeros((n_sources, n_channels, n_freq, n_frames), dtype=np.complex64)
     
     for s in range(n_sources):
-        for c in range(n_channels):
-            for f in range(n_freq):
-                y_vec = Y[s, f, :]
-                x_vec = X[c, f, :]
-                
-                # Project source s onto microphone c
-                # scale = (y . x*) / (y . y*)
-                num = np.dot(y_vec, x_vec.conj())
-                denom = np.dot(y_vec, y_vec.conj()) + 1e-10
-                scale = num / denom
-                
-                Y_images[s, c, f, :] = scale * y_vec
+        for f in range(n_freq):
+            y_vec = Y[s, f, :]
+            
+            # Project source s onto microphone c
+            # scale = (y . x*) / (y . y*)
+            denom = np.vdot(y_vec, y_vec).real + 1e-10
+            numerators = X[:, f, :] @ y_vec.conj()
+            scales = numerators / denom
+            
+            Y_images[s, :, f, :] = scales[:, None] * y_vec[None, :]
                 
     return Y_images
 

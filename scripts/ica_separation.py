@@ -26,16 +26,11 @@ def projection_back(Y, X):
     Y_images = np.zeros((n_sources, n_channels, n_samples))
     
     for s in range(n_sources):
-        for c in range(n_channels):
-            y_vec = Y[s, :]
-            x_vec = X[c, :]
+        y_vec = Y[s, :]
+        denom = np.dot(y_vec, y_vec) + 1e-10
+        scales = (X @ y_vec) / denom
             
-            # Scalar projection: scale = (y . x) / (y . y)
-            num = np.dot(y_vec, x_vec)
-            denom = np.dot(y_vec, y_vec) + 1e-10
-            scale = num / denom
-            
-            Y_images[s, c, :] = scale * y_vec
+        Y_images[s, :, :] = np.outer(scales, y_vec)
             
     return Y_images
 
