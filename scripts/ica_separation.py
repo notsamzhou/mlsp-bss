@@ -8,6 +8,37 @@ warnings.filterwarnings('ignore', category=FutureWarning)
 import mir_eval
 
 
+def projection_back(Y, X):
+    """
+    Projects mono ICA sources back to the stereo microphone channels
+    using Least Squares (Minimal Distortion Principle).
+    
+    Args:
+        Y: Estimated sources (n_sources, n_samples)
+        X: Original mixture (n_channels, n_samples)
+        
+    Returns:
+        Y_images: Stereo images (n_sources, n_channels, n_samples)
+    """
+    n_sources, n_samples = Y.shape
+    n_channels = X.shape[0]
+    
+    Y_images = np.zeros((n_sources, n_channels, n_samples))
+    
+    for s in range(n_sources):
+        for c in range(n_channels):
+            y_vec = Y[s, :]
+            x_vec = X[c, :]
+            
+            # Scalar projection: scale = (y . x) / (y . y)
+            num = np.dot(y_vec, x_vec)
+            denom = np.dot(y_vec, y_vec) + 1e-10
+            scale = num / denom
+            
+            Y_images[s, c, :] = scale * y_vec
+            
+    return Y_images
+
 def ica(M: np.ndarray):
     """
     Performs ICA using FOBI
@@ -57,6 +88,12 @@ def evaluate_separation(references, estimates):
     sdr, sir, sar, _ = mir_eval.separation.bss_eval_sources(references, estimates)
     return sdr, sir, sar
 
+def flatten_stereo(stereo_audio):
+    """
+    Flattens stereo (2, N) audio into (2*N,) for evaluation
+    """
+
+    return stereo_audio.reshape(-1)
 
 
 def main(args):
@@ -85,37 +122,43 @@ def main(args):
 
     # Apply ICA and normalize
     H = ica(audio)
+    H = projection_back(H, audio)
     source1 = normalize(H[0])
     source2 = normalize(H[1])
 
     # Save to target dir
     output_file1 = output_dir / f"{args.output_prefix}_source1.wav"
     output_file2 = output_dir / f"{args.output_prefix}_source2.wav"
-    sf.write(output_file1, source1, sr)
-    sf.write(output_file2, source2, sr)
+    sf.write(output_file1, source1.T, sr)
+    sf.write(output_file2, source2.T, sr)
 
 
     try:
         print("\nPerforming Evaluation")
 
-        vocal_ref, _ = librosa.load(args.vocal_ref, sr=sr, mono=True)
-        instr_ref, _ = librosa.load(args.instr_ref, sr=sr, mono=True)
+        vocal_ref, _ = librosa.load(args.vocal_ref, sr=sr, mono=False)
+        instr_ref, _ = librosa.load(args.instr_ref, sr=sr, mono=False)
 
         # Truncate to shortest length
-        min_len = min(len(source1), len(source2), len(vocal_ref), len(instr_ref))
-        source1 = source1[:min_len]
-        source2 = source2[:min_len]
-        vocal_ref = vocal_ref[:min_len]
-        instr_ref = instr_ref[:min_len]
+        min_len = min(source1.shape[1], source2.shape[1], vocal_ref.shape[1], instr_ref.shape[1])
+        source1 = source1[:, :min_len]
+        source2 = source2[:, :min_len]
+        vocal_ref = vocal_ref[:, :min_len]
+        instr_ref = instr_ref[:, :min_len]
 
         # Normalize ground truths
         vocal_ref = normalize(vocal_ref)
         instr_ref = normalize(instr_ref)
 
+        vocal_ref_flat = flatten_stereo(vocal_ref)
+        instr_ref_flat = flatten_stereo(instr_ref)
+        source1_flat = flatten_stereo(source1)
+        source2_flat = flatten_stereo(source2)
+
         # Try both orderings to find which aligns better with vocal/instr
-        references = np.array([vocal_ref, instr_ref])
-        estimates_order1 = np.array([source1, source2])
-        estimates_order2 = np.array([source2, source1])
+        references = np.array([vocal_ref_flat, instr_ref_flat])
+        estimates_order1 = np.array([source1_flat, source2_flat])
+        estimates_order2 = np.array([source2_flat, source1_flat])
         sdr1, sir1, sar1 = evaluate_separation(references, estimates_order1)
         sdr2, sir2, sar2 = evaluate_separation(references, estimates_order2)
 
@@ -133,8 +176,8 @@ def main(args):
 
         output_file1 = output_dir / f"{args.output_prefix}_vocals.wav"
         output_file2 = output_dir / f"{args.output_prefix}_instrumental.wav"
-        sf.write(output_file1, vocal_est, sr)
-        sf.write(output_file2, instr_est, sr)
+        sf.write(output_file1, vocal_est.T, sr)
+        sf.write(output_file2, instr_est.T, sr)
         
         print("\nBSS Metrics:")
         print(f"    Vocals:")
