@@ -14,7 +14,7 @@ def projection_back(Y, X):
     using Least Squares (Minimal Distortion Principle).
     
     Args:
-        Y: Estimated sources (n_sources, n_samples)
+        Y: Separated sources (n_sources, n_samples)
         X: Original mixture (n_channels, n_samples)
         
     Returns:

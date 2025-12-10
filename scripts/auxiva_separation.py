@@ -9,14 +9,15 @@ import mir_eval
 
 def projection_back(Y, X):
     """
-    Projects separated sources back to ALL microphones (Stereo preservation).
+    Projects AuxIVA sources back to the stereo microphone channels
+    using Least Squares (Minimal Distortion Principle).
     
     Args:
         Y: Separated source STFTs (n_sources, n_freq, n_frames)
-        X: Mixture STFTs (n_channels, n_freq, n_frames)
+        X: Original mixture STFTs (n_channels, n_freq, n_frames)
     
     Returns:
-        Y_images: Stereo images of sources (n_sources, n_channels, n_freq, n_frames)
+        Y_images: Stereo images (n_sources, n_channels, n_freq, n_frames)
     """
     n_sources, n_freq, n_frames = Y.shape
     n_channels = X.shape[0]
@@ -40,13 +41,13 @@ def projection_back(Y, X):
 
 def auxiva(X, n_iters=30):
     """
-    Performs Blind Source Separation using AuxIVA (Iterative Projection).
+    Performs Blind Source Separation using AuxIVA.
     X shape: (n_channels, n_freq, n_frames)
     """
     n_channels, n_freq, n_frames = X.shape
     n_sources = n_channels 
 
-    # 1. Initialize W
+    # Initialize W unmixing matrix
     # Shape: (Freq, Source, Channel)
     W = np.array([np.eye(n_sources, n_channels, dtype=np.complex64) for _ in range(n_freq)])
     
@@ -56,16 +57,13 @@ def auxiva(X, n_iters=30):
     # Identity matrix for updates
     I = np.eye(n_sources)
     
-    print(f"Running AuxIVA\n")
-    
     for epoch in range(n_iters):
-        # 2. Source Model (Variance Profile)
-        # Sum over Frequencies (axis=0)
+        # Variance Model, norm of frequency vector
         # Result shape: (Source, Time)
         R = np.sqrt(np.sum(np.abs(Y)**2, axis=0)) 
         R[R < 1e-10] = 1e-10
         
-        # 3. Update sources one by one
+        # Update sources one by one
         for s in range(n_sources):
             # Contrast function derivative (weight)
             # Shape: (n_sources, n_frames) -> select source s -> (n_frames,)
@@ -80,22 +78,22 @@ def auxiva(X, n_iters=30):
             # V shape: (Freq, Chan, Chan)
             V = np.einsum('cft, dft -> fcd', X_weighted, X.conj()) / n_frames
             
-            # 4. Update Rule: (W @ V) @ w_new = e_s
+            # Update Rule: (W @ V) @ w_new = e_s
             WV = np.matmul(W, V)
             
             # Create RHS vector: e_s
             rhs = np.tile(I[:, s][None, :, None], (n_freq, 1, 1))
             
-            # Solve for w_new (column vector)
+            # Solve for w_new (column vector) = w_s^H
             w_new = np.linalg.solve(WV, rhs)
             
             # Squeeze to (Freq, Chan)
             w_new = w_new[..., 0]
             
-            # 5. Normalize
-            # Calculate w_new^H @ V @ w_new
-            Vw = np.einsum('fcd, fd -> fc', V, w_new.conj())
-            val = np.einsum('fc, fc -> f', w_new, Vw).real
+            # Normalize
+            # Calculate w_s @ V @ w_s^H
+            Vw = np.einsum('fcd, fd -> fc', V, w_new)
+            val = np.einsum('fc, fc -> f', w_new.conj(), Vw).real
             val = np.maximum(val, 1e-15)
             scale = np.sqrt(val) + 1e-10
             w_new = w_new / scale[:, None]
@@ -109,7 +107,7 @@ def auxiva(X, n_iters=30):
         if (epoch+1) % 10 == 0:
             print(f"  Iteration {epoch+1}/{n_iters} complete")
     
-    # Transpose Y to (Sources, Freq, Time)
+    # Transpose to (Sources, Freq, Time)
     Y = np.transpose(Y, (1, 0, 2))
             
     return Y
