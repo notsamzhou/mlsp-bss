@@ -265,7 +265,7 @@ if __name__ == "__main__":
                         help='Instrumental reference for evaluation (default: audio/originals/Nude_instrumental.wav)')
     
     parser.add_argument('--n-iter', type=int, default=100,
-                        help='Number of GD iterations (default: 100)')
+                        help='Number of update iterations (default: 100)')
     parser.add_argument('--n-fft', type=int, default=2048,
                         help='FFT window size (default: 2048)')
     parser.add_argument('--hop-length', type=int, default=512,

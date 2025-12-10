@@ -165,7 +165,7 @@ if __name__ == "__main__":
     parser.add_argument('--n-base', type=int, default=40,
                         help='Number of basis components (default: 40)')
     parser.add_argument('--n-iter', type=int, default=100,
-                        help='Number of NMF iterations (default: 100)')
+                        help='Number of algorithm iterations (default: 100)')
     parser.add_argument('--n-fft', type=int, default=2048,
                         help='FFT window size (default: 2048)')
     parser.add_argument('--hop-length', type=int, default=512,
