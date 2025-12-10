@@ -27,6 +27,7 @@ mlsp-bss/
 │   └── ica_separation.py
 │   └── nmf_separation.py
 │   └── tune_nmf_params.py
+│   └── auxiva_separation.py.py
 │   └── ilrma_separation.py
 ├── requirements.txt
 └── README.md
@@ -39,18 +40,23 @@ python scripts/create_groundtruth_audio.py
 
 ICA separation
 ```bash
-python scripts/ica_separation.py
+python scripts/ica_separation.py -i {input file} -o {output file prefix} -v {vocal reference} -r {instrumental reference}
 ```
 
 NMF separation
 ```bash
-python scripts/nmf_separation.py
+python scripts/nmf_separation.py -i {input file} -o {output file prefix} -v {vocal reference} -r {instrumental reference} --n-base {Number of basis components} --n-iter {algorithm iterations} --n-fft {FFT window size} --hop-length{FFT hop length} --win-length {STFT window length}
+```
+
+IVA separation
+```bash
+python scripts/ica_separation.py -i {input file} -o {output file prefix} -v {vocal reference} -r {instrumental reference} --n-iter {algorithm iterations} --n-fft {FFT window size} --hop-length{FFT hop length} --win-length {STFT window length}
 ```
 
 ILRMA separation
 ```bash
-python scripts/ilrma_separation.py
+python scripts/ilrma_separation.py -i {input file} -o {output file prefix} -v {vocal reference} -r {instrumental reference} --n-base {Number of basis components} --n-iter {algorithm iterations} --n-fft {FFT window size} --hop-length{FFT hop length} --win-length {STFT window length}
 ```
 
 ## Methods
-Baseline methods include Independent Component Analysis and Non-negative Matrix Factorization with more to come.
+Available separation methods include ICA, NMF, AuxIVA, and ILRMA.
