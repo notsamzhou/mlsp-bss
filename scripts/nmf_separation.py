@@ -127,9 +127,11 @@ def main(args):
     mag_vocal_rec, mag_inst_rec = nmf_separation(mag, n_base=n_base, n_iter=n_iter)
     
     # soft mask
+    eps_mask = 1e-10
     mag_total = mag_vocal_rec + mag_inst_rec
-    mask_v = (mag_vocal_rec ** 2) / (mag_total ** 2)
-    mask_i = (mag_inst_rec ** 2) / (mag_total ** 2)
+    mag_total_sq = mag_total ** 2
+    mask_v = (mag_vocal_rec ** 2) / (mag_total_sq + eps_mask)
+    mask_i = (mag_inst_rec ** 2) / (mag_total_sq + eps_mask)
     audio_vocal_rec = librosa.istft(mask_v * spec, hop_length=hop_length, center=False, win_length=win_length)
     audio_inst_rec = librosa.istft(mask_i * spec, hop_length=hop_length, center=False, win_length=win_length)
     
@@ -188,6 +190,8 @@ def main(args):
         print(f"        SIR: {sir[1]:.2f} dB")
         print(f"        SAR: {sar[1]:.2f} dB")
         print(f"\nAverage SDR: {np.mean(sdr):.2f} dB")
+        print(f"\nAverage SIR: {np.mean(sir):.2f} dB")
+        print(f"\nAverage SAR: {np.mean(sar):.2f} dB")
         
     except Exception as e:
         print(f"\nError: evaluation failed: {e}")
