@@ -13,14 +13,14 @@ pip install -r requirements.txt
 ```
 
 ### Data
-Uses stems of 'Nude' by Radiohead released by the band for a remix competition.
+Uses stems of 'Nude' by Radiohead released by the band for a remix competition and stems from MedleyDB 2.0.
 
 The recommended file structure is as follows:
 ```
 mlsp-bss/
 ├── audio/
-│   ├── stems/           # Individual tracks (vocal, drum, bass, guitar, synth)
-│   ├── originals/       # Mixed audio (original + mix, instrumental created by script)
+│   ├── stems/           # Individual tracks (vocal, drum, bass, guitar, synth) and yaml
+│   ├── originals/       # Mixed audio (original + mix, instrumental + vocals created by script)
 │   └── outputs/         # BSS separation outputs
 ├── scripts/
 │   ├── create_groundtruth_audio.py
